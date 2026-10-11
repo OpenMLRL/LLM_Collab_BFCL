@@ -180,18 +180,25 @@ def main() -> None:
     role_mode = str(config.get("bfcl.role_mode", "self_select"))
     reward_cfg = config.get_section("bfcl_reward")
     from comlrl.trainers.reinforce import (
-        MAGRPOConfig, MAGRPOTrainer, CentralizedMAGRPOConfig, CentralizedMAGRPOTrainer,
+        MAGRPOConfig,
+        MAGRPOTrainer,
+        CentralizedMAGRPOConfig,
+        CentralizedMAGRPOTrainer,
     )
 
     collaboration_mode = magrpo_section.get("collaboration_mode", "decentralized")
     if collaboration_mode not in {"decentralized", "centralized"}:
-        raise ValueError("magrpo.collaboration_mode must be decentralized or centralized.")
+        raise ValueError(
+            "magrpo.collaboration_mode must be decentralized or centralized."
+        )
     centralized = collaboration_mode == "centralized"
     args_cls = CentralizedMAGRPOConfig if centralized else MAGRPOConfig
     trainer_cls = CentralizedMAGRPOTrainer if centralized else MAGRPOTrainer
     collaboration_kwargs = {}
     if centralized:
-        from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
+        from native_parallel.centralized_comparator import (
+            BFCLCentralizedComparatorAdapter,
+        )
 
         collaboration_kwargs["centralized_adapter"] = BFCLCentralizedComparatorAdapter()
 

@@ -78,7 +78,9 @@ def _greedy_match(
     return score_sum / max(1, len(gold_calls)), exact_count, matched_count
 
 
-def _function_f1(predicted_calls: Sequence[ToolCall], gold_calls: Sequence[ToolCall]) -> float:
+def _function_f1(
+    predicted_calls: Sequence[ToolCall], gold_calls: Sequence[ToolCall]
+) -> float:
     pred_counts = Counter(call.name for call in predicted_calls)
     gold_counts = Counter(call.name for call in gold_calls)
     overlap = sum(min(pred_counts[name], gold_counts[name]) for name in gold_counts)
@@ -103,7 +105,10 @@ def _balance_score(agent_call_counts: Sequence[int], gold_count: int) -> float:
     if not agent_call_counts or gold_count <= 0:
         return 0.0
     ideal = _ideal_counts(gold_count, len(agent_call_counts))
-    diff = sum(abs(int(actual) - expected) for actual, expected in zip(agent_call_counts, ideal))
+    diff = sum(
+        abs(int(actual) - expected)
+        for actual, expected in zip(agent_call_counts, ideal)
+    )
     return max(0.0, 1.0 - diff / max(1, gold_count))
 
 
@@ -153,7 +158,10 @@ def _ordered_exact_match(
 ) -> bool:
     if len(predicted_calls) != len(gold_calls) or not gold_calls:
         return False
-    return all(_call_similarity(predicted, gold)[1] for predicted, gold in zip(predicted_calls, gold_calls))
+    return all(
+        _call_similarity(predicted, gold)[1]
+        for predicted, gold in zip(predicted_calls, gold_calls)
+    )
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
@@ -192,7 +200,9 @@ class MultiturnFlatReward:
     def reward_range(self) -> Tuple[float, float]:
         return float(self.config.min_reward), float(self.config.max_reward)
 
-    def __call__(self, *agent_completions, batch_items=None, prompts=None) -> List[float]:
+    def __call__(
+        self, *agent_completions, batch_items=None, prompts=None
+    ) -> List[float]:
         del prompts
         if batch_items is None:
             raise ValueError("MultiturnFlatReward requires batch_items.")

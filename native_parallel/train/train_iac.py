@@ -27,7 +27,9 @@ from native_parallel.train.common import (
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train IAC on native BFCL parallel tasks.")
+    parser = argparse.ArgumentParser(
+        description="Train IAC on native BFCL parallel tasks."
+    )
     add_config_args(parser)
     args = parser.parse_args()
     config = Config(args.config or str(DEFAULT_CONFIG))

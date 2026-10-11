@@ -16,7 +16,9 @@ class ToolCall:
     raw: str = ""
 
 
-def function_parameter_order(function_schemas: Sequence[Dict[str, Any]]) -> Dict[str, List[str]]:
+def function_parameter_order(
+    function_schemas: Sequence[Dict[str, Any]]
+) -> Dict[str, List[str]]:
     order: Dict[str, List[str]] = {}
     for schema in function_schemas:
         name = str(schema.get("name", ""))

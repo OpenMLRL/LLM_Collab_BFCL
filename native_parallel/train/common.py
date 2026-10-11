@@ -217,7 +217,9 @@ def build_native_ac_metrics_callback(
         for group in grouped.values():
             item = group["item"]
             completions_by_agent = group["completions"]
-            if any(agent_idx not in completions_by_agent for agent_idx in range(num_agents)):
+            if any(
+                agent_idx not in completions_by_agent for agent_idx in range(num_agents)
+            ):
                 continue
             completions = [completions_by_agent[idx] for idx in range(num_agents)]
             _, detail = score_native_parallel_response(
@@ -330,8 +332,12 @@ def prepare_native_components(
     )
 
 
-def save_final_agents_if_requested(components: NativeTrainComponents, trainer: Any) -> None:
-    if not bool_value(components.config.get("output.save_final_model", False), default=False):
+def save_final_agents_if_requested(
+    components: NativeTrainComponents, trainer: Any
+) -> None:
+    if not bool_value(
+        components.config.get("output.save_final_model", False), default=False
+    ):
         return
     agents = getattr(trainer, "agents", [])
     tokenizers = getattr(trainer, "tokenizers", components.tokenizers)
@@ -339,5 +345,7 @@ def save_final_agents_if_requested(components: NativeTrainComponents, trainer: A
         save_dir = os.path.join(components.output_dir, f"agent_{agent_idx}")
         model = getattr(agent, "model", agent)
         model.save_pretrained(save_dir)
-        tokenizer = tokenizers[agent_idx] if isinstance(tokenizers, list) else tokenizers
+        tokenizer = (
+            tokenizers[agent_idx] if isinstance(tokenizers, list) else tokenizers
+        )
         tokenizer.save_pretrained(save_dir)

@@ -182,13 +182,17 @@ def _summarize(records: List[Dict[str, Any]]) -> Dict[str, float]:
     summary = {"num_samples": float(len(records))}
     for key in scalar_keys:
         summary[f"turn_1/{key}"] = _mean(
-            float(record[key]) for record in records if isinstance(record.get(key), (int, float))
+            float(record[key])
+            for record in records
+            if isinstance(record.get(key), (int, float))
         )
 
     return summary
 
 
-def _maybe_log_wandb(config: Config, summary: Dict[str, float], output_dir: str) -> None:
+def _maybe_log_wandb(
+    config: Config, summary: Dict[str, float], output_dir: str
+) -> None:
     wandb_cfg = config.get_section("wandb")
     if not _bool(wandb_cfg.get("enabled", False), default=False):
         return
@@ -245,7 +249,9 @@ def main() -> None:
         model_kwargs["torch_dtype"] = dtype
     if model_config.attn_implementation is not None:
         model_kwargs["attn_implementation"] = model_config.attn_implementation
-    model = AutoModelForCausalLM.from_pretrained(model_config.name, **model_kwargs).to(device)
+    model = AutoModelForCausalLM.from_pretrained(model_config.name, **model_kwargs).to(
+        device
+    )
     model.eval()
 
     output_base = str(config.get("baseline.output_dir", "output_single_agent_baseline"))
