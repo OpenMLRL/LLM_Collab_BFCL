@@ -173,3 +173,44 @@ directory and log the summary to wandb when `wandb.enabled: true`.
 
 Training launchers isolate unset CUDA JIT caches per job on node-local storage.
 Update CoMLRL alongside this checkout; see the [runtime cache guide](docs/runtime_cache.md).
+
+## Centralized actors
+
+Native parallel training can use one model to generate both logical roles. The
+default remains decentralized. For task-reward MAGRPO:
+
+```bash
+python native_parallel/train/train_magrpo.py --override \
+  magrpo.collaboration_mode=centralized magrpo.num_turns=1 \
+  magrpo.parallel_training=none 'magrpo.agent_devices=["cuda:0"]'
+```
+
+For preference training:
+
+```bash
+python native_parallel/train/train_madpo_iter.py --override \
+  madpo_iter.collaboration_mode=centralized madpo_iter.parallel_training=none \
+  'madpo_iter.agent_devices=["cuda:0"]'
+python native_parallel/train/train_marlhf_iter.py --override \
+  marlhf_iter.collaboration_mode=centralized marlhf_iter.parallel_training=none \
+  'marlhf_iter.agent_devices=["cuda:0"]'
+```
+
+Use `train_madpo.py` / `train_marlhf.py` with the corresponding `madpo.*` /
+`marlhf.*` prefixes for the non-iterative algorithms. Keep `num_agents=2` for
+logical roles and `num_turns=1`; the joint actor is loaded once. Explicit `agents`,
+actor device lists, and reference-model device lists must describe one model.
+The examples above replace the default two-device actor configuration; changing
+only `collaboration_mode` leaves an incompatible device list in MP mode.
+
+`BFCLCentralizedComparatorAdapter` combines the original function schemas and
+role assignments. It splits `<agent_0>` / `<agent_1>` outputs only for the existing
+tool-call reward and evaluation. Training and replay retain the complete joint
+response. Iterative current, history, model, and API comparators use centralized
+generation. Comparator and reward-model devices remain independently configured.
+
+`max_new_tokens` is the total joint-response budget; increase it when the two
+role responses need more room. MARLHF `reward_max_length` must fit the joint
+prompt and both responses. MAGRPO uses the task reward directly and does not
+create a comparator or learned reward model. The `multiturn_flat` entrypoints
+and decentralized defaults are unchanged.

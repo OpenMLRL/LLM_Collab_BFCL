@@ -188,9 +188,23 @@ def main() -> None:
     num_agents = int(magrpo_section.get("num_agents", 2))
     role_mode = str(config.get("bfcl.role_mode", "self_select"))
     reward_cfg = config.get_section("bfcl_reward")
-    from comlrl.trainers.reinforce import MAGRPOConfig, MAGRPOTrainer
+    from comlrl.trainers.reinforce import (
+        MAGRPOConfig, MAGRPOTrainer, CentralizedMAGRPOConfig, CentralizedMAGRPOTrainer,
+    )
 
-    magrpo_args = MAGRPOConfig(
+    collaboration_mode = magrpo_section.get("collaboration_mode", "decentralized")
+    if collaboration_mode not in {"decentralized", "centralized"}:
+        raise ValueError("magrpo.collaboration_mode must be decentralized or centralized.")
+    centralized = collaboration_mode == "centralized"
+    args_cls = CentralizedMAGRPOConfig if centralized else MAGRPOConfig
+    trainer_cls = CentralizedMAGRPOTrainer if centralized else MAGRPOTrainer
+    collaboration_kwargs = {}
+    if centralized:
+        from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
+
+        collaboration_kwargs["centralized_adapter"] = BFCLCentralizedComparatorAdapter()
+
+    magrpo_args = args_cls(
         num_agents=num_agents,
         num_turns=int(magrpo_section.get("num_turns", 1)),
         parallel_training=str(magrpo_section.get("parallel_training", "mp")),
@@ -236,7 +250,7 @@ def main() -> None:
     )
     reward_processor = _build_reward_processor(config)
 
-    trainer = MAGRPOTrainer(
+    trainer = trainer_cls(
         agent_model=model_name if not agent_names else None,
         agents=agent_names,
         num_agents=num_agents,
@@ -257,6 +271,7 @@ def main() -> None:
         eval_logger=eval_logger,
         eval_aggregator=aggregate_native_parallel_metrics,
         args=magrpo_args,
+        **collaboration_kwargs,
     )
     trainer.train()
 
