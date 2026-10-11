@@ -19,7 +19,7 @@ DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from native_parallel.config import Config, add_config_args, parse_overrides
+from native_parallel.config import Config, add_config_args, parse_overrides, run_id
 from native_parallel.data import DEFAULT_NATIVE_CATEGORIES, load_native_parallel_dataset
 from native_parallel.rewards.native_parallel_reward import (
     NativeParallelRewardConfig,
@@ -235,7 +235,7 @@ def main() -> None:
     model.eval()
 
     output_base = str(config.get("baseline.output_dir", "output_single_agent_baseline"))
-    output_dir = os.path.join(output_base, f"job_{os.environ.get('SLURM_JOB_ID', 'no_job_id')}")
+    output_dir = os.path.join(output_base, run_id())
     os.makedirs(output_dir, exist_ok=True)
     config.save(os.path.join(output_dir, "config.yaml"))
 

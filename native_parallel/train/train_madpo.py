@@ -28,10 +28,6 @@ from native_parallel.train.common import (
 
 
 def main() -> None:
-    from comlrl.runtime import configure_job_cuda_cache
-
-    configure_job_cuda_cache()
-
     parser = argparse.ArgumentParser(description="Train MADPO on native BFCL parallel tasks.")
     add_config_args(parser)
     args = parser.parse_args()

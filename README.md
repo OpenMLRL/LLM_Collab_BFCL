@@ -169,10 +169,6 @@ python3 multiturn_flat/baseline/single_agent/eval_single_agent.py
 
 Both write `predictions.jsonl` and `summary.json` under their configured output
 directory and log the summary to wandb when `wandb.enabled: true`.
-## Slurm runtime cache
-
-Training launchers isolate unset CUDA JIT caches per job on node-local storage.
-Update CoMLRL alongside this checkout; see the [runtime cache guide](docs/runtime_cache.md).
 
 ## Centralized actors
 
