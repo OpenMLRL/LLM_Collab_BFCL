@@ -10,10 +10,9 @@ TASK_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = TASK_ROOT.parent
 DEFAULT_CONFIG = TASK_ROOT / "configs" / "native_parallel_madpo_iter_config.yaml"
 COMLRL_ROOT = REPO_ROOT.parent / "CoMLRL"
-if str(COMLRL_ROOT) not in sys.path:
-    sys.path.insert(0, str(COMLRL_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+for path in (COMLRL_ROOT, REPO_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from comlrl.trainers.preference import MADPOIterConfig, MADPOIterTrainer
 from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
@@ -33,10 +32,7 @@ def main() -> None:
     )
     add_config_args(parser)
     args = parser.parse_args()
-    if not args.config:
-        args.config = str(DEFAULT_CONFIG)
-
-    config = Config(args.config)
+    config = Config(args.config or str(DEFAULT_CONFIG))
     if args.override:
         config.update(parse_overrides(args.override))
 
@@ -67,7 +63,6 @@ def main() -> None:
         model_config=magrpo_model_config(components.model_config),
         train_dataset=components.train_dataset,
         eval_dataset=components.eval_dataset,
-        dataset_type="bfcl",
         reward_func=components.reward_func,
         reward_processor=components.reward_processor,
         formatters=components.formatters,

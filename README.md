@@ -7,6 +7,25 @@ dataset loader, formatter, parser, logger, reward, and training entrypoints.
 The two task directories do not import each other and there is no root shared
 BFCL runtime layer.
 
+## Installation
+
+Install [CoMLRL](https://github.com/OpenMLRL/CoMLRL):
+
+```bash
+pip install comlrl
+# Install PyTorch compatible with your device
+```
+
+Or via conda-forge:
+
+```bash
+conda install -c conda-forge comlrl
+# Install PyTorch compatible with your device
+```
+
+A `CoMLRL/` checkout next to this repository takes precedence over the
+installed package, so local CoMLRL changes are used without reinstalling.
+
 ## Dataset
 
 The task datasets are split on Hugging Face:

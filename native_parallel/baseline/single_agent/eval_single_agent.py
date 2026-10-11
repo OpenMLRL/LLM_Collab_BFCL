@@ -181,8 +181,8 @@ def _maybe_log_wandb(config: Config, summary: Dict[str, float], output_dir: str)
         print("wandb is not installed; skipping wandb logging.")
         return
     run = wandb.init(
-        project=wandb_cfg.get("project", "bfcl-v4"),
-        entity=wandb_cfg.get("entity", None),
+        project=wandb_cfg.get("project"),
+        entity=wandb_cfg.get("entity", "OpenMLRL"),
         name=wandb_cfg.get("name", "native_parallel_single_agent_baseline"),
         dir=wandb_cfg.get("dir", output_dir),
         tags=wandb_cfg.get("tags", []),
@@ -203,10 +203,7 @@ def main() -> None:
     )
     add_config_args(parser)
     args = parser.parse_args()
-    if not args.config:
-        args.config = str(DEFAULT_CONFIG)
-
-    config = Config(args.config)
+    config = Config(args.config or str(DEFAULT_CONFIG))
     if args.override:
         config.update(parse_overrides(args.override))
     _set_seed(int(config.get("seed", 42)))

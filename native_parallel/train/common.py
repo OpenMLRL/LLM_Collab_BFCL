@@ -13,7 +13,6 @@ from transformers import AutoTokenizer
 
 TASK_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = TASK_ROOT.parent
-COMLRL_ROOT = REPO_ROOT.parent / "CoMLRL"
 
 from native_parallel.config import Config, ModelConfig, run_id
 from native_parallel.data import DEFAULT_NATIVE_CATEGORIES, load_native_parallel_dataset
@@ -173,7 +172,7 @@ def build_wandb_config(
         ],
     )
     return {
-        "project": wandb_section.get("project", "comlrl"),
+        "project": wandb_section.get("project"),
         "entity": wandb_section.get("entity", "OpenMLRL"),
         "name": wandb_section.get("name", default_name),
         "dir": wandb_section.get("dir", output_dir),
