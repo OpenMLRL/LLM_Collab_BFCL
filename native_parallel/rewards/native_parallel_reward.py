@@ -78,7 +78,9 @@ def _greedy_match(
     return score_sum / max(1, len(gold_calls)), exact_count, matched_count
 
 
-def _function_f1(predicted_calls: Sequence[ToolCall], gold_calls: Sequence[ToolCall]) -> float:
+def _function_f1(
+    predicted_calls: Sequence[ToolCall], gold_calls: Sequence[ToolCall]
+) -> float:
     pred_counts = Counter(call.name for call in predicted_calls)
     gold_counts = Counter(call.name for call in gold_calls)
     overlap = sum(min(pred_counts[name], gold_counts[name]) for name in gold_counts)
@@ -103,7 +105,10 @@ def _balance_score(agent_call_counts: Sequence[int], gold_count: int) -> float:
     if not agent_call_counts or gold_count <= 0:
         return 0.0
     ideal = _ideal_counts(gold_count, len(agent_call_counts))
-    diff = sum(abs(int(actual) - expected) for actual, expected in zip(agent_call_counts, ideal))
+    diff = sum(
+        abs(int(actual) - expected)
+        for actual, expected in zip(agent_call_counts, ideal)
+    )
     return max(0.0, 1.0 - diff / max(1, gold_count))
 
 
@@ -154,14 +159,18 @@ class NativeParallelRewardConfig:
 
 @dataclass
 class NativeParallelReward:
-    config: NativeParallelRewardConfig = field(default_factory=NativeParallelRewardConfig)
+    config: NativeParallelRewardConfig = field(
+        default_factory=NativeParallelRewardConfig
+    )
     last_details: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
     def reward_range(self) -> Tuple[float, float]:
         return float(self.config.min_reward), float(self.config.max_reward)
 
-    def __call__(self, *agent_completions, batch_items=None, prompts=None) -> List[float]:
+    def __call__(
+        self, *agent_completions, batch_items=None, prompts=None
+    ) -> List[float]:
         del prompts
         if batch_items is None:
             raise ValueError("NativeParallelReward requires batch_items.")
@@ -207,7 +216,9 @@ def score_native_parallel_response(
 
     parse_score = 1.0 if combined_calls else 0.0
     function_f1 = _function_f1(combined_calls, gold_calls)
-    argument_score, exact_count, matched_count = _greedy_match(combined_calls, gold_calls)
+    argument_score, exact_count, matched_count = _greedy_match(
+        combined_calls, gold_calls
+    )
     gold_count = len(gold_calls)
     pred_count = len(combined_calls)
     count_score = max(0.0, 1.0 - abs(pred_count - gold_count) / max(1, gold_count))
@@ -227,7 +238,9 @@ def score_native_parallel_response(
     extra_rate = min(1.0, extra_calls / max(1, gold_count))
     raw_call_count = len(raw_combined_calls)
 
-    exact_match = exact_count == gold_count and pred_count == gold_count and gold_count > 0
+    exact_match = (
+        exact_count == gold_count and pred_count == gold_count and gold_count > 0
+    )
     reward = (
         cfg.parse_weight * parse_score
         + cfg.function_weight * function_f1

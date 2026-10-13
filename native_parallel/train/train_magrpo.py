@@ -16,12 +16,11 @@ TASK_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = TASK_ROOT.parent
 DEFAULT_CONFIG = TASK_ROOT / "configs" / "native_parallel_magrpo_config.yaml"
 COMLRL_ROOT = REPO_ROOT.parent / "CoMLRL"
-if str(COMLRL_ROOT) not in sys.path:
-    sys.path.insert(0, str(COMLRL_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+for path in (COMLRL_ROOT, REPO_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
-from native_parallel.config import Config, add_config_args, parse_overrides
+from native_parallel.config import Config, add_config_args, parse_overrides, run_id
 from native_parallel.data import (
     DEFAULT_NATIVE_CATEGORIES,
     load_native_parallel_dataset,
@@ -103,7 +102,7 @@ def _wandb_config(config: Config, output_dir: str, magrpo_config: Dict[str, Any]
         ],
     )
     return {
-        "project": wandb_section.get("project", "comlrl"),
+        "project": wandb_section.get("project"),
         "entity": wandb_section.get("entity", "OpenMLRL"),
         "name": wandb_section.get("name", "native_parallel_magrpo"),
         "dir": wandb_section.get("dir", output_dir),
@@ -119,19 +118,12 @@ def _wandb_config(config: Config, output_dir: str, magrpo_config: Dict[str, Any]
 
 
 def main() -> None:
-    from comlrl.runtime import configure_job_cuda_cache
-
-    configure_job_cuda_cache()
-
     parser = argparse.ArgumentParser(
         description="Train MAGRPO on native BFCL parallel tasks."
     )
     add_config_args(parser)
     args = parser.parse_args()
-    if not args.config:
-        args.config = str(DEFAULT_CONFIG)
-
-    config = Config(args.config)
+    config = Config(args.config or str(DEFAULT_CONFIG))
     if args.override:
         config.update(parse_overrides(args.override))
 
@@ -147,8 +139,7 @@ def main() -> None:
     _set_seed(seed_value)
 
     output_base_dir = str(config.get("output.base_dir", "output_magrpo_bfcl"))
-    job_id = os.environ.get("SLURM_JOB_ID", "no_job_id")
-    output_dir = os.path.join(output_base_dir, f"job_{job_id}")
+    output_dir = os.path.join(output_base_dir, run_id())
     os.makedirs(output_dir, exist_ok=True)
     if hasattr(config, "save"):
         config.save(os.path.join(output_dir, "config.yaml"))
@@ -188,9 +179,30 @@ def main() -> None:
     num_agents = int(magrpo_section.get("num_agents", 2))
     role_mode = str(config.get("bfcl.role_mode", "self_select"))
     reward_cfg = config.get_section("bfcl_reward")
-    from comlrl.trainers.reinforce import MAGRPOConfig, MAGRPOTrainer
+    from comlrl.trainers.reinforce import (
+        MAGRPOConfig,
+        MAGRPOTrainer,
+        CentralizedMAGRPOConfig,
+        CentralizedMAGRPOTrainer,
+    )
 
-    magrpo_args = MAGRPOConfig(
+    collaboration_mode = magrpo_section.get("collaboration_mode", "decentralized")
+    if collaboration_mode not in {"decentralized", "centralized"}:
+        raise ValueError(
+            "magrpo.collaboration_mode must be decentralized or centralized."
+        )
+    centralized = collaboration_mode == "centralized"
+    args_cls = CentralizedMAGRPOConfig if centralized else MAGRPOConfig
+    trainer_cls = CentralizedMAGRPOTrainer if centralized else MAGRPOTrainer
+    collaboration_kwargs = {}
+    if centralized:
+        from native_parallel.centralized_comparator import (
+            BFCLCentralizedComparatorAdapter,
+        )
+
+        collaboration_kwargs["centralized_adapter"] = BFCLCentralizedComparatorAdapter()
+
+    magrpo_args = args_cls(
         num_agents=num_agents,
         num_turns=int(magrpo_section.get("num_turns", 1)),
         parallel_training=str(magrpo_section.get("parallel_training", "mp")),
@@ -236,7 +248,7 @@ def main() -> None:
     )
     reward_processor = _build_reward_processor(config)
 
-    trainer = MAGRPOTrainer(
+    trainer = trainer_cls(
         agent_model=model_name if not agent_names else None,
         agents=agent_names,
         num_agents=num_agents,
@@ -248,7 +260,6 @@ def main() -> None:
         },
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        dataset_type="bfcl",
         reward_func=reward_func,
         reward_processor=reward_processor,
         formatters=formatters,
@@ -257,6 +268,7 @@ def main() -> None:
         eval_logger=eval_logger,
         eval_aggregator=aggregate_native_parallel_metrics,
         args=magrpo_args,
+        **collaboration_kwargs,
     )
     trainer.train()
 

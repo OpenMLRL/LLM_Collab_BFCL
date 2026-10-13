@@ -10,10 +10,9 @@ TASK_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = TASK_ROOT.parent
 DEFAULT_CONFIG = TASK_ROOT / "configs" / "native_parallel_maac_config.yaml"
 COMLRL_ROOT = REPO_ROOT.parent / "CoMLRL"
-if str(COMLRL_ROOT) not in sys.path:
-    sys.path.insert(0, str(COMLRL_ROOT))
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+for path in (COMLRL_ROOT, REPO_ROOT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from comlrl.trainers.actor_critic import MAACConfig, MAACTrainer
 from native_parallel.config import Config, add_config_args, parse_overrides
@@ -28,17 +27,12 @@ from native_parallel.train.common import (
 
 
 def main() -> None:
-    from comlrl.runtime import configure_job_cuda_cache
-
-    configure_job_cuda_cache()
-
-    parser = argparse.ArgumentParser(description="Train MAAC on native BFCL parallel tasks.")
+    parser = argparse.ArgumentParser(
+        description="Train MAAC on native BFCL parallel tasks."
+    )
     add_config_args(parser)
     args = parser.parse_args()
-    if not args.config:
-        args.config = str(DEFAULT_CONFIG)
-
-    config = Config(args.config)
+    config = Config(args.config or str(DEFAULT_CONFIG))
     if args.override:
         config.update(parse_overrides(args.override))
 

@@ -28,12 +28,11 @@ def build_native_parallel_eval_logger(
     cfg = NativeParallelRewardConfig.from_dict(reward_config or {})
 
     def logger(
+        *,
         agent_completions_turns: List[List[List[str]]],
-        test_cases: List[str],
-        entry_points: List[str],
         prompts: List[str] | None = None,
+        **_: Any,
     ) -> List[Dict[str, Any]]:
-        del test_cases, entry_points
         if not agent_completions_turns or prompts is None:
             return []
         metrics = []

@@ -13,9 +13,8 @@ from transformers import AutoTokenizer
 
 TASK_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = TASK_ROOT.parent
-COMLRL_ROOT = REPO_ROOT.parent / "CoMLRL"
 
-from native_parallel.config import Config, ModelConfig
+from native_parallel.config import Config, ModelConfig, run_id
 from native_parallel.data import DEFAULT_NATIVE_CATEGORIES, load_native_parallel_dataset
 from native_parallel.formatting import get_native_parallel_formatters
 from native_parallel.logger import (
@@ -173,7 +172,7 @@ def build_wandb_config(
         ],
     )
     return {
-        "project": wandb_section.get("project", "comlrl"),
+        "project": wandb_section.get("project"),
         "entity": wandb_section.get("entity", "OpenMLRL"),
         "name": wandb_section.get("name", default_name),
         "dir": wandb_section.get("dir", output_dir),
@@ -218,7 +217,9 @@ def build_native_ac_metrics_callback(
         for group in grouped.values():
             item = group["item"]
             completions_by_agent = group["completions"]
-            if any(agent_idx not in completions_by_agent for agent_idx in range(num_agents)):
+            if any(
+                agent_idx not in completions_by_agent for agent_idx in range(num_agents)
+            ):
                 continue
             completions = [completions_by_agent[idx] for idx in range(num_agents)]
             _, detail = score_native_parallel_response(
@@ -262,8 +263,7 @@ def prepare_native_components(
     task_types = config.get("dataset.task_types", None)
 
     output_base_dir = str(config.get("output.base_dir", default_output_base_dir))
-    job_id = os.environ.get("SLURM_JOB_ID", "no_job_id")
-    output_dir = os.path.join(output_base_dir, f"job_{job_id}")
+    output_dir = os.path.join(output_base_dir, run_id())
     os.makedirs(output_dir, exist_ok=True)
     config.save(os.path.join(output_dir, "config.yaml"))
 
@@ -332,8 +332,12 @@ def prepare_native_components(
     )
 
 
-def save_final_agents_if_requested(components: NativeTrainComponents, trainer: Any) -> None:
-    if not bool_value(components.config.get("output.save_final_model", False), default=False):
+def save_final_agents_if_requested(
+    components: NativeTrainComponents, trainer: Any
+) -> None:
+    if not bool_value(
+        components.config.get("output.save_final_model", False), default=False
+    ):
         return
     agents = getattr(trainer, "agents", [])
     tokenizers = getattr(trainer, "tokenizers", components.tokenizers)
@@ -341,5 +345,7 @@ def save_final_agents_if_requested(components: NativeTrainComponents, trainer: A
         save_dir = os.path.join(components.output_dir, f"agent_{agent_idx}")
         model = getattr(agent, "model", agent)
         model.save_pretrained(save_dir)
-        tokenizer = tokenizers[agent_idx] if isinstance(tokenizers, list) else tokenizers
+        tokenizer = (
+            tokenizers[agent_idx] if isinstance(tokenizers, list) else tokenizers
+        )
         tokenizer.save_pretrained(save_dir)

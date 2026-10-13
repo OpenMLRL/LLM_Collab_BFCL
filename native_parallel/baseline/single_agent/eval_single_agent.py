@@ -19,7 +19,7 @@ DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from native_parallel.config import Config, add_config_args, parse_overrides
+from native_parallel.config import Config, add_config_args, parse_overrides, run_id
 from native_parallel.data import DEFAULT_NATIVE_CATEGORIES, load_native_parallel_dataset
 from native_parallel.rewards.native_parallel_reward import (
     NativeParallelRewardConfig,
@@ -165,13 +165,17 @@ def _summarize(records: List[Dict[str, Any]]) -> Dict[str, float]:
     summary = {"num_samples": float(len(records))}
     for key in scalar_keys:
         summary[f"turn_1/{key}"] = _mean(
-            float(record[key]) for record in records if isinstance(record.get(key), (int, float))
+            float(record[key])
+            for record in records
+            if isinstance(record.get(key), (int, float))
         )
 
     return summary
 
 
-def _maybe_log_wandb(config: Config, summary: Dict[str, float], output_dir: str) -> None:
+def _maybe_log_wandb(
+    config: Config, summary: Dict[str, float], output_dir: str
+) -> None:
     wandb_cfg = config.get_section("wandb")
     if not _bool(wandb_cfg.get("enabled", False), default=False):
         return
@@ -181,8 +185,8 @@ def _maybe_log_wandb(config: Config, summary: Dict[str, float], output_dir: str)
         print("wandb is not installed; skipping wandb logging.")
         return
     run = wandb.init(
-        project=wandb_cfg.get("project", "bfcl-v4"),
-        entity=wandb_cfg.get("entity", None),
+        project=wandb_cfg.get("project"),
+        entity=wandb_cfg.get("entity", "OpenMLRL"),
         name=wandb_cfg.get("name", "native_parallel_single_agent_baseline"),
         dir=wandb_cfg.get("dir", output_dir),
         tags=wandb_cfg.get("tags", []),
@@ -203,10 +207,7 @@ def main() -> None:
     )
     add_config_args(parser)
     args = parser.parse_args()
-    if not args.config:
-        args.config = str(DEFAULT_CONFIG)
-
-    config = Config(args.config)
+    config = Config(args.config or str(DEFAULT_CONFIG))
     if args.override:
         config.update(parse_overrides(args.override))
     _set_seed(int(config.get("seed", 42)))
@@ -231,11 +232,13 @@ def main() -> None:
         model_kwargs["torch_dtype"] = dtype
     if model_config.attn_implementation is not None:
         model_kwargs["attn_implementation"] = model_config.attn_implementation
-    model = AutoModelForCausalLM.from_pretrained(model_config.name, **model_kwargs).to(device)
+    model = AutoModelForCausalLM.from_pretrained(model_config.name, **model_kwargs).to(
+        device
+    )
     model.eval()
 
     output_base = str(config.get("baseline.output_dir", "output_single_agent_baseline"))
-    output_dir = os.path.join(output_base, f"job_{os.environ.get('SLURM_JOB_ID', 'no_job_id')}")
+    output_dir = os.path.join(output_base, run_id())
     os.makedirs(output_dir, exist_ok=True)
     config.save(os.path.join(output_dir, "config.yaml"))
 
