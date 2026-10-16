@@ -145,6 +145,41 @@ python3 native_parallel/train/train_magrpo.py \
   --override bfcl.role_mode=split_by_order
 ```
 
+### Training checkpoints
+
+All eight CoMLRL training entrypoints accept an optional top-level `checkpoint`
+section. Without it, training keeps its existing behavior and does not enable
+automatic checkpoints. These options are passed directly to `trainer.train`:
+
+```yaml
+checkpoint:
+  resume_from_checkpoint: null
+  checkpoint_dir: checkpoints/native_parallel
+  checkpoint_interval: 1
+  checkpoint_total_limit: 3
+```
+
+The existing override syntax also works:
+
+```bash
+python3 native_parallel/train/train_magrpo.py --override \
+  checkpoint.resume_from_checkpoint=checkpoints/native_parallel/checkpoint-2 \
+  checkpoint.checkpoint_dir=checkpoints/native_parallel \
+  checkpoint.checkpoint_total_limit=3
+```
+
+CoMLRL saves at supported training boundaries and retains at most the requested
+number of automatic snapshots. `checkpoint_total_limit: null` keeps all snapshots.
+Resuming does not enable further saves unless `checkpoint_dir` is supplied; final
+model exports still follow `output.save_final_model`.
+
+Before constructing the trainer, a resume uses the saved W&B run ID, project, and
+entity with `resume: allow`. Explicit `wandb.id` or `wandb.resume` values take
+precedence and skip metadata inference. Disabled W&B does not read checkpoint
+metadata, and older checkpoints without a saved W&B identity retain the current
+logging settings. Run names, tags, output paths, and logged config sections remain
+unchanged.
+
 ## Reward
 
 `native_parallel/rewards/native_parallel_reward.py` always uses flat aggregate

@@ -16,6 +16,8 @@ for path in (COMLRL_ROOT, REPO_ROOT):
 
 from comlrl.trainers.preference import MADPOConfig, MADPOTrainer
 from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
+from checkpoint_launch import parse_checkpoint_options, prepare_wandb_config
+
 from native_parallel.config import Config, add_config_args, parse_overrides
 from native_parallel.train.common import (
     build_trainer_args,
@@ -35,6 +37,8 @@ def main() -> None:
     config = Config(args.config or str(DEFAULT_CONFIG))
     if args.override:
         config.update(parse_overrides(args.override))
+
+    checkpoint_options = parse_checkpoint_options(config)
 
     section_name = "madpo"
     madpo_section = config.get_section(section_name)
@@ -67,19 +71,23 @@ def main() -> None:
         reward_processor=components.reward_processor,
         formatters=components.formatters,
         external_transition=None,
-        wandb_config=build_wandb_config(
+        wandb_config=prepare_wandb_config(
             config,
-            components.output_dir,
-            madpo_section,
-            algorithm_name="madpo",
-            default_name="native_parallel_madpo",
+            build_wandb_config(
+                config,
+                components.output_dir,
+                madpo_section,
+                algorithm_name="madpo",
+                default_name="native_parallel_madpo",
+            ),
+            checkpoint_options,
         ),
         eval_logger=components.eval_logger,
         eval_aggregator=components.eval_aggregator,
         centralized_comparator_adapter=BFCLCentralizedComparatorAdapter(),
         args=madpo_args,
     )
-    trainer.train()
+    trainer.train(**checkpoint_options)
     save_final_agents_if_requested(components, trainer)
 
 

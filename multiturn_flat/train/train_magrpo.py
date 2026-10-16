@@ -20,6 +20,8 @@ for path in (COMLRL_ROOT, REPO_ROOT):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
+from checkpoint_launch import parse_checkpoint_options, prepare_wandb_config
+
 from multiturn_flat.config import Config, add_config_args, parse_overrides, run_id
 from multiturn_flat.data import (
     DEFAULT_MULTITURN_CATEGORIES,
@@ -126,6 +128,8 @@ def main() -> None:
     config = Config(args.config or str(DEFAULT_CONFIG))
     if args.override:
         config.update(parse_overrides(args.override))
+
+    checkpoint_options = parse_checkpoint_options(config)
 
     model_config = config.get_agent_model_config()
     model_name = model_config.name
@@ -243,12 +247,16 @@ def main() -> None:
         reward_processor=reward_processor,
         formatters=formatters,
         external_transition=None,
-        wandb_config=_wandb_config(config, output_dir, magrpo_section),
+        wandb_config=prepare_wandb_config(
+            config,
+            _wandb_config(config, output_dir, magrpo_section),
+            checkpoint_options,
+        ),
         eval_logger=eval_logger,
         eval_aggregator=aggregate_multiturn_flat_metrics,
         args=magrpo_args,
     )
-    trainer.train()
+    trainer.train(**checkpoint_options)
 
     if _bool(config.get("output.save_final_model", False), default=False):
         for agent_idx, agent in enumerate(trainer.agents):
