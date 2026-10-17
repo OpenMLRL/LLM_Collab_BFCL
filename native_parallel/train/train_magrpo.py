@@ -203,8 +203,17 @@ def main() -> None:
         from native_parallel.centralized_comparator import (
             BFCLCentralizedComparatorAdapter,
         )
+        from native_parallel.centralized_native import BFCLNativeCentralizedAdapter
 
-        collaboration_kwargs["centralized_adapter"] = BFCLCentralizedComparatorAdapter()
+        # "concatenated" embeds both agent prompts; "native" states the request once.
+        prompt_mode = str(config.get("bfcl.centralized_prompt", "concatenated"))
+        if prompt_mode not in {"concatenated", "native"}:
+            raise ValueError("bfcl.centralized_prompt must be concatenated or native.")
+        collaboration_kwargs["centralized_adapter"] = (
+            BFCLNativeCentralizedAdapter(role_mode)
+            if prompt_mode == "native"
+            else BFCLCentralizedComparatorAdapter()
+        )
 
     magrpo_args = args_cls(
         num_agents=num_agents,
