@@ -8,8 +8,8 @@ CoMLRL can be installed from PyPI or conda-forge (`conda install -c conda-forge 
 
 ```bash
 pip install comlrl
-git clone https://github.com/OpenMLRL/LLM_Collab_BFCL-v4.git
-cd LLM_Collab_BFCL-v4
+git clone https://github.com/OpenMLRL/LLM_Collab_BFCL.git
+cd LLM_Collab_BFCL
 ```
 
 A `CoMLRL/` checkout next to this repository takes precedence over the installed package, so local CoMLRL changes are used without reinstalling.
