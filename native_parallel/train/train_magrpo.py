@@ -199,7 +199,12 @@ def main() -> None:
     args_cls = CentralizedMAGRPOConfig if centralized else MAGRPOConfig
     trainer_cls = CentralizedMAGRPOTrainer if centralized else MAGRPOTrainer
     collaboration_kwargs = {}
+    centralized_args = {}
     if centralized:
+        # Score the joint response with the decentralized MAGRPO loss.
+        centralized_args["match_decentralized_loss"] = _bool(
+            magrpo_section.get("match_decentralized_loss", False), default=False
+        )
         from native_parallel.centralized_comparator import (
             BFCLCentralizedComparatorAdapter,
         )
@@ -239,6 +244,9 @@ def main() -> None:
             magrpo_section.get("advantage_normalization", True), default=True
         ),
         advantage_mode=str(magrpo_section.get("advantage_mode", "mean")),
+        skip_zero_grad_steps=_bool(
+            magrpo_section.get("skip_zero_grad_steps", False), default=False
+        ),
         eval_interval=int(magrpo_section.get("eval_interval", 20)),
         eval_num_samples=int(magrpo_section.get("eval_num_samples", 16)),
         eval_batch_size=int(magrpo_section.get("eval_batch_size", 1)),
@@ -247,6 +255,7 @@ def main() -> None:
         ),
         reference_kl_coef=float(magrpo_section.get("reference_kl_coef", 0.1)),
         reference_devices=magrpo_section.get("reference_devices", None),
+        **centralized_args,
     )
 
     formatters = get_native_parallel_formatters(

@@ -133,6 +133,9 @@ def test_entrypoint_selects_the_centralized_prompt(
     monkeypatch.setattr(sys, "argv", ["train", "--override", *overrides])
     entrypoint.main()
     assert type(observed["centralized_adapter"]) is adapter_cls
+    # The default config shares the decentralized loss and skips empty updates.
+    assert observed["args"].match_decentralized_loss is True
+    assert observed["args"].skip_zero_grad_steps is True
 
 
 def test_entrypoint_rejects_unknown_prompt_mode(monkeypatch, tmp_path):
