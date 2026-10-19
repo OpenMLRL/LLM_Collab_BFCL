@@ -14,7 +14,7 @@ for path in (COMLRL_ROOT, REPO_ROOT):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from comlrl.trainers.preference import MARLHFConfig, MARLHFTrainer
+from comlrl.trainers.pbrl import MARLHFConfig, MARLHFTrainer
 from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
 from checkpoint_launch import parse_checkpoint_options, prepare_wandb_config
 

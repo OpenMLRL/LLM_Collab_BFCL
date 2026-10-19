@@ -9,8 +9,8 @@ from tokenizers.models import WordLevel
 from tokenizers.pre_tokenizers import WhitespaceSplit
 from transformers import GPT2Config, GPT2LMHeadModel, PreTrainedTokenizerFast
 
-from comlrl.trainers.preference.collaboration import CentralizedCollaboration
-from comlrl.trainers.reinforce import CentralizedMAGRPOConfig, CentralizedMAGRPOTrainer
+from comlrl.trainers.centralized import CentralizedCollaboration
+from comlrl.trainers.reinforce import MAGRPOConfig, MAGRPOTrainer
 from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
 from native_parallel.centralized_native import BFCLNativeCentralizedAdapter
 from native_parallel.formatting import get_native_parallel_formatters
@@ -110,7 +110,7 @@ def test_entrypoint_selects_the_centralized_prompt(
         observed.update(kwargs)
         return SimpleNamespace(train=lambda: None)
 
-    monkeypatch.setattr(reinforce, "CentralizedMAGRPOTrainer", capture)
+    monkeypatch.setattr(reinforce, "MAGRPOTrainer", capture)
     monkeypatch.setattr(
         entrypoint,
         "load_native_parallel_dataset",
@@ -201,11 +201,13 @@ def test_native_joint_actor_updates_with_real_bfcl_reward_and_eval():
         return SimpleNamespace(sequences=torch.stack(sequences))
 
     model.generate = generate
-    trainer = CentralizedMAGRPOTrainer(
+    trainer = MAGRPOTrainer(
         agents=[model],
         tokenizer=tokenizer,
         num_agents=2,
-        args=CentralizedMAGRPOConfig(
+        args=MAGRPOConfig(
+            collaboration_mode="centralized",
+            num_turns=1,
             agent_devices=["cpu"],
             parallel_training="none",
             num_generations=2,
