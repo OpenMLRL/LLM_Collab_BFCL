@@ -20,6 +20,7 @@ from checkpoint_launch import parse_checkpoint_options, prepare_wandb_config
 from native_parallel.config import Config, add_config_args, parse_overrides
 from native_parallel.train.common import (
     actor_critic_model_config,
+    build_centralized_adapter,
     build_trainer_args,
     build_wandb_config,
     optional_model_config,
@@ -60,6 +61,10 @@ def main() -> None:
     if not critic_source:
         raise ValueError("MAAC requires critic_model.name or agent_model.name.")
 
+    collaboration_kwargs = {}
+    if maac_args.collaboration_mode == "centralized":
+        # One joint actor answers the prompt chosen by bfcl.centralized_prompt.
+        collaboration_kwargs["centralized_adapter"] = build_centralized_adapter(config)
     trainer = MAACTrainer(
         agent_model=components.model_name if not components.agent_names else None,
         agents=components.agent_names,
@@ -92,6 +97,7 @@ def main() -> None:
             checkpoint_options,
         ),
         critic_model=critic_source,
+        **collaboration_kwargs,
     )
     trainer.train(**checkpoint_options)
     save_final_agents_if_requested(components, trainer)

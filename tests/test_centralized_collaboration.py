@@ -71,7 +71,7 @@ def _run_preference_entrypoint(section, trainer_name, overrides, monkeypatch):
     """Run a pbrl launcher on stub components and return the trainer's kwargs."""
     entrypoint = importlib.import_module(f"native_parallel.train.train_{section}")
     config = entrypoint.Config(str(entrypoint.DEFAULT_CONFIG))
-    assert config.get(f"{section}.collaboration_mode") == "decentralized"
+    assert config.get(f"{section}.collaboration_mode") in (None, "decentralized")
     components = SimpleNamespace(
         model_name="local-test-model",
         agent_names=None,
@@ -137,6 +137,25 @@ def test_entrypoint_passes_bfcl_adapter(section, trainer_name, mode, monkeypatch
         assert runtime.split(response, {}) == ['weather(city="Boston")', "[]"]
         if section.endswith("_iter"):
             assert observed["args"].comparator_generation_mode == "centralized"
+
+
+@pytest.mark.parametrize("prompt_mode", [None, "concatenated", "native"])
+@pytest.mark.parametrize("mode", ["centralized", "decentralized"])
+def test_maac_entrypoint_selects_the_joint_actor_prompt(mode, prompt_mode, monkeypatch):
+    overrides = [f"maac.collaboration_mode={mode}"]
+    if mode == "centralized":
+        overrides += ["maac.parallel_training=none", 'maac.agent_devices=["cpu"]']
+    if prompt_mode is not None:
+        overrides.append(f"bfcl.centralized_prompt={prompt_mode}")
+    observed = _run_preference_entrypoint("maac", "MAACTrainer", overrides, monkeypatch)
+    assert observed["args"].collaboration_mode == mode
+    adapter = observed.get("centralized_adapter")
+    if mode == "decentralized":
+        assert adapter is None
+    elif prompt_mode == "native":
+        assert type(adapter) is BFCLNativeCentralizedAdapter
+    else:
+        assert type(adapter) is BFCLCentralizedComparatorAdapter
 
 
 @pytest.mark.parametrize(
