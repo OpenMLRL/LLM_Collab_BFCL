@@ -12,12 +12,20 @@ from transformers import GPT2Config, GPT2LMHeadModel, PreTrainedTokenizerFast
 from comlrl.trainers.centralized import CentralizedCollaboration
 from comlrl.trainers.reinforce import MAGRPOConfig, MAGRPOTrainer
 from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
+from native_parallel.centralized_native import BFCLNativeCentralizedAdapter
 from native_parallel.formatting import get_native_parallel_formatters
 from native_parallel.logger import (
     aggregate_native_parallel_metrics,
     build_native_parallel_eval_logger,
 )
 from native_parallel.rewards import make_reward
+
+
+ROW = {
+    "id": "two-cities",
+    "prompt": "Get the weather in Boston and Paris.",
+    "function": [{"name": "weather", "parameters": {"city": "string"}}],
+}
 
 
 @pytest.mark.parametrize("mode", ["centralized", "decentralized"])
@@ -59,17 +67,8 @@ def test_magrpo_entrypoint_selects_joint_actor(mode, monkeypatch, tmp_path):
         assert observed["args"].parallel_training == "mp"
 
 
-@pytest.mark.parametrize(
-    "section,trainer_name",
-    [
-        ("madpo", "MADPOTrainer"),
-        ("marlhf", "MARLHFTrainer"),
-        ("madpo_iter", "MADPOIterTrainer"),
-        ("marlhf_iter", "MARLHFIterTrainer"),
-    ],
-)
-@pytest.mark.parametrize("mode", ["centralized", "decentralized"])
-def test_entrypoint_passes_bfcl_adapter(section, trainer_name, mode, monkeypatch):
+def _run_preference_entrypoint(section, trainer_name, overrides, monkeypatch):
+    """Run a pbrl launcher on stub components and return the trainer's kwargs."""
     entrypoint = importlib.import_module(f"native_parallel.train.train_{section}")
     config = entrypoint.Config(str(entrypoint.DEFAULT_CONFIG))
     assert config.get(f"{section}.collaboration_mode") == "decentralized"
@@ -101,14 +100,29 @@ def test_entrypoint_passes_bfcl_adapter(section, trainer_name, mode, monkeypatch
     monkeypatch.setattr(entrypoint, "build_wandb_config", lambda *a, **kw: {})
     monkeypatch.setattr(entrypoint, "save_final_agents_if_requested", lambda *a: None)
     monkeypatch.setattr(entrypoint, trainer_name, create_trainer)
+    monkeypatch.setattr(sys, "argv", ["train", "--override", *overrides])
+    entrypoint.main()
+    return observed
+
+
+@pytest.mark.parametrize(
+    "section,trainer_name",
+    [
+        ("madpo", "MADPOTrainer"),
+        ("marlhf", "MARLHFTrainer"),
+        ("madpo_iter", "MADPOIterTrainer"),
+        ("marlhf_iter", "MARLHFIterTrainer"),
+    ],
+)
+@pytest.mark.parametrize("mode", ["centralized", "decentralized"])
+def test_entrypoint_passes_bfcl_adapter(section, trainer_name, mode, monkeypatch):
     overrides = [f"{section}.collaboration_mode={mode}"]
     if mode == "centralized":
         overrides += [
             f"{section}.parallel_training=none",
             f'{section}.agent_devices=["cpu"]',
         ]
-    monkeypatch.setattr(sys, "argv", ["train", "--override", *overrides])
-    entrypoint.main()
+    observed = _run_preference_entrypoint(section, trainer_name, overrides, monkeypatch)
     assert observed["num_agents"] == 2
     assert observed["args"].collaboration_mode == mode
     if mode == "centralized":
@@ -123,6 +137,38 @@ def test_entrypoint_passes_bfcl_adapter(section, trainer_name, mode, monkeypatch
         assert runtime.split(response, {}) == ['weather(city="Boston")', "[]"]
         if section.endswith("_iter"):
             assert observed["args"].comparator_generation_mode == "centralized"
+
+
+@pytest.mark.parametrize(
+    "section,trainer_name",
+    [("madpo_iter", "MADPOIterTrainer"), ("marlhf_iter", "MARLHFIterTrainer")],
+)
+@pytest.mark.parametrize("prompt_mode", [None, "native"])
+def test_centralized_comparator_follows_the_centralized_prompt(
+    section, trainer_name, prompt_mode, monkeypatch
+):
+    # Dec-Cen: decentralized agents are compared with one centralized comparator.
+    overrides = [
+        f"{section}.comparator_generation_mode=centralized",
+        "bfcl.role_mode=odd_even",
+    ]
+    if prompt_mode is not None:
+        overrides.append(f"bfcl.centralized_prompt={prompt_mode}")
+    observed = _run_preference_entrypoint(section, trainer_name, overrides, monkeypatch)
+    assert observed["args"].collaboration_mode == "decentralized"
+    assert observed["args"].comparator_generation_mode == "centralized"
+    adapter = observed["centralized_comparator_adapter"]
+    formatters = get_native_parallel_formatters(num_agents=2, role_mode="odd_even")
+    roles = [format_role(ROW) for format_role in formatters]
+    prompt = adapter.build_prompt(ROW, roles)
+    if prompt_mode == "native":
+        assert type(adapter) is BFCLNativeCentralizedAdapter
+        assert adapter.role_mode == "odd_even"
+        assert prompt.count(ROW["prompt"]) == 1
+        assert not any(role in prompt for role in roles)
+    else:
+        assert type(adapter) is BFCLCentralizedComparatorAdapter
+        assert all(role in prompt for role in roles)
 
 
 GOOD = '<agent_0> weather(city="Boston") </agent_0> <agent_1> weather(city="Paris") </agent_1>'

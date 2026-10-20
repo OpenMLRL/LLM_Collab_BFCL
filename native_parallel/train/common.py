@@ -132,6 +132,25 @@ def build_reward_processor(config: Config):
     return lambda value: shift_processor(reward_processor(value))
 
 
+def build_centralized_adapter(config: Config):
+    """The centralized prompt chosen by ``bfcl.centralized_prompt``.
+
+    "concatenated" (default) embeds both agent prompts; "native" states the request
+    once. The same adapter serves the joint actor and the centralized comparator.
+    """
+    from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
+    from native_parallel.centralized_native import BFCLNativeCentralizedAdapter
+
+    prompt_mode = str(config.get("bfcl.centralized_prompt", "concatenated"))
+    if prompt_mode not in {"concatenated", "native"}:
+        raise ValueError("bfcl.centralized_prompt must be concatenated or native.")
+    if prompt_mode == "native":
+        return BFCLNativeCentralizedAdapter(
+            str(config.get("bfcl.role_mode", "self_select"))
+        )
+    return BFCLCentralizedComparatorAdapter()
+
+
 def build_trainer_args(
     args_cls: Type[Any],
     raw_section: Dict[str, Any],

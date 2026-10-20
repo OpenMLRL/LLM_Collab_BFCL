@@ -199,20 +199,9 @@ def main() -> None:
         centralized_args["match_decentralized_loss"] = _bool(
             magrpo_section.get("match_decentralized_loss", False), default=False
         )
-        from native_parallel.centralized_comparator import (
-            BFCLCentralizedComparatorAdapter,
-        )
-        from native_parallel.centralized_native import BFCLNativeCentralizedAdapter
+        from native_parallel.train.common import build_centralized_adapter
 
-        # "concatenated" embeds both agent prompts; "native" states the request once.
-        prompt_mode = str(config.get("bfcl.centralized_prompt", "concatenated"))
-        if prompt_mode not in {"concatenated", "native"}:
-            raise ValueError("bfcl.centralized_prompt must be concatenated or native.")
-        collaboration_kwargs["centralized_adapter"] = (
-            BFCLNativeCentralizedAdapter(role_mode)
-            if prompt_mode == "native"
-            else BFCLCentralizedComparatorAdapter()
-        )
+        collaboration_kwargs["centralized_adapter"] = build_centralized_adapter(config)
 
     magrpo_args = MAGRPOConfig(
         num_agents=num_agents,
