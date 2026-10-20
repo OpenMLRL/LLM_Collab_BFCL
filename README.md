@@ -75,7 +75,7 @@ python native_parallel/train/train_magrpo.py --override \
   agent_model.attn_implementation=sdpa
 ```
 
-**Centralized comparator.** The iterative preference methods can pair decentralized agents with one centralized comparator, which writes both agents' sections in a single answer. `bfcl.centralized_prompt` picks that comparator's prompt in the same way, `concatenated` by default or `native`. In centralized preference runs, the joint actor uses the same prompt. The comparator's joint answer shares `max_new_tokens` with the agents, which is 256 in the iterative configs:
+**Centralized comparator.** The iterative preference methods can pair decentralized agents with one centralized comparator, which writes both agents' sections in a single answer. `bfcl.centralized_prompt` picks that comparator's prompt in the same way, `concatenated` by default or `native`. In centralized preference runs, the joint actor uses the same prompt. The comparator's joint answer shares `max_new_tokens` with the agents, 256 in the iterative configs, unless `madpo_iter.comparator_centralized_max_new_tokens` gives it its own budget:
 
 ```bash
 python native_parallel/train/train_madpo_iter.py --override \
