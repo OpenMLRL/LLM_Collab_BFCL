@@ -14,12 +14,12 @@ for path in (COMLRL_ROOT, REPO_ROOT):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from comlrl.trainers.preference import MADPOConfig, MADPOTrainer
-from native_parallel.centralized_comparator import BFCLCentralizedComparatorAdapter
+from comlrl.trainers.pbrl import MADPOConfig, MADPOTrainer
 from checkpoint_launch import parse_checkpoint_options, prepare_wandb_config
 
 from native_parallel.config import Config, add_config_args, parse_overrides
 from native_parallel.train.common import (
+    build_centralized_adapter,
     build_trainer_args,
     build_wandb_config,
     magrpo_model_config,
@@ -84,7 +84,7 @@ def main() -> None:
         ),
         eval_logger=components.eval_logger,
         eval_aggregator=components.eval_aggregator,
-        centralized_comparator_adapter=BFCLCentralizedComparatorAdapter(),
+        centralized_comparator_adapter=build_centralized_adapter(config),
         args=madpo_args,
     )
     trainer.train(**checkpoint_options)
